@@ -40,7 +40,11 @@ const Game = {
     if (typeof Input !== "undefined" && Input.init) {
       Input.init();
     }
-
+   
+    if (typeof Input !== "undefined" && Input.init) {
+      Input.init();
+    }
+    
     this.player = new Player(60, 130);
 
     this._bindUI();
