@@ -1104,7 +1104,12 @@ const Game = {
     // 1. Textured ground
     // ----------------------------------------------------------
 
-    this.renderGround();
+    World.drawGround(this.ctx, {
+  x: 0,
+  y: 0,
+  w: this.canvas.width,
+  h: this.canvas.height
+});
 
     // ----------------------------------------------------------
     // 2. Depth-sorted decorations + entities + player
