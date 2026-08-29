@@ -1,8 +1,8 @@
 // ============================================================
-// GAME.JS — Greenvale visual/gameplay engine
-// Preserves the original scene, entity, dialogue, save/load,
-// combat and progression systems while using the new textured
-// Sprites/World renderer and mobile controls.
+// GAME.JS — Greenvale gameplay + textured renderer
+// Keeps original gameplay systems, mobile controls, saves,
+// dialogue, combat, scenes and progression.
+// Uses World.js + Sprites.js for textured visuals.
 // ============================================================
 
 const Game = {
@@ -22,6 +22,10 @@ const Game = {
   lastBlockedToast: 0,
   toastTimer: 0,
 
+  // ============================================================
+  // INIT
+  // ============================================================
+
   async init() {
     this.canvas = document.getElementById("gameCanvas");
 
@@ -31,56 +35,91 @@ const Game = {
     }
 
     this.ctx = this.canvas.getContext("2d");
+
+    // Crisp pixel art
     this.ctx.imageSmoothingEnabled = false;
 
-    // ----------------------------------------------------------
-    // IMPORTANT: initialize the original input system.
-    // This brings back joystick + attack + interact buttons.
-    // ----------------------------------------------------------
-    if (typeof Input !== "undefined" && Input.init) {
+    // IMPORTANT:
+    // Keep the original input system so the mobile buttons
+    // and joystick continue working.
+    if (
+      typeof Input !== "undefined" &&
+      Input.init
+    ) {
       Input.init();
     }
-   
-    if (typeof Input !== "undefined" && World.init) {
+
+    // IMPORTANT:
+    // Initialize the textured World renderer.
+    if (
+      typeof World !== "undefined" &&
+      World.init
+    ) {
       World.init();
     }
-    
+
+    // Player
     this.player = new Player(60, 130);
 
+    // UI buttons
     this._bindUI();
 
     // Audio
-    if (typeof AudioSys !== "undefined" && AudioSys.init) {
+    if (
+      typeof AudioSys !== "undefined" &&
+      AudioSys.init
+    ) {
       AudioSys.init();
     }
 
     // ----------------------------------------------------------
-    // Load saved game
+    // LOAD SAVE
     // ----------------------------------------------------------
+
     let save = null;
 
-    if (typeof Storage !== "undefined" && Storage.load) {
+    if (
+      typeof Storage !== "undefined" &&
+      Storage.load
+    ) {
       save = await Storage.load("ww-save");
     }
 
     if (save) {
       this.flags = save.flags || {};
 
-      this.player.stage = save.stage || "child";
-      this.player.maxHp = save.maxHp || STAGE_MAXHP.child;
+      this.player.stage =
+        save.stage || "child";
+
+      this.player.maxHp =
+        save.maxHp || STAGE_MAXHP.child;
+
       this.player.hp =
-        save.hp != null ? save.hp : this.player.maxHp;
+        save.hp != null
+          ? save.hp
+          : this.player.maxHp;
 
       this.loadScene(
         save.sceneId || "greenvale",
         {
-          x: save.playerX || 60,
-          y: save.playerY || 130,
-          dir: save.playerDir || "down",
+          x:
+            save.playerX != null
+              ? save.playerX
+              : 60,
+
+          y:
+            save.playerY != null
+              ? save.playerY
+              : 130,
+
+          dir:
+            save.playerDir || "down",
         }
       );
 
-      this.showToast("Welcome back to Whispering Woods");
+      this.showToast(
+        "Welcome back to Whispering Woods"
+      );
     } else {
       this.loadScene(
         "greenvale",
@@ -92,29 +131,44 @@ const Game = {
       );
 
       setTimeout(() => {
-        this.showToast("Use the joystick / arrow keys to move");
+        this.showToast(
+          "Use the joystick / arrow keys to move"
+        );
       }, 600);
     }
 
-    // Dialogue
-    const dialogueBox = document.getElementById("dialogueBox");
+    // ----------------------------------------------------------
+    // DIALOGUE
+    // ----------------------------------------------------------
+
+    const dialogueBox =
+      document.getElementById("dialogueBox");
 
     if (dialogueBox) {
-      dialogueBox.addEventListener("click", () => {
-        if (
-          typeof DialogueSys !== "undefined" &&
-          DialogueSys.advance
-        ) {
-          DialogueSys.advance();
+      dialogueBox.addEventListener(
+        "click",
+        () => {
+          if (
+            typeof DialogueSys !== "undefined" &&
+            DialogueSys.advance
+          ) {
+            DialogueSys.advance();
+          }
         }
-      });
+      );
     }
 
-    // Resume audio after user interaction
+    // ----------------------------------------------------------
+    // RESUME AUDIO AFTER USER INTERACTION
+    // ----------------------------------------------------------
+
     document.body.addEventListener(
       "touchstart",
       () => {
-        if (typeof AudioSys !== "undefined" && AudioSys.resume) {
+        if (
+          typeof AudioSys !== "undefined" &&
+          AudioSys.resume
+        ) {
           AudioSys.resume();
         }
       },
@@ -124,15 +178,20 @@ const Game = {
     document.body.addEventListener(
       "mousedown",
       () => {
-        if (typeof AudioSys !== "undefined" && AudioSys.resume) {
+        if (
+          typeof AudioSys !== "undefined" &&
+          AudioSys.resume
+        ) {
           AudioSys.resume();
         }
       },
       { once: true }
     );
 
-    // Start loop
-    requestAnimationFrame((t) => this.loop(t));
+    // Start game loop
+    requestAnimationFrame(
+      (t) => this.loop(t)
+    );
   },
 
   // ============================================================
@@ -140,18 +199,29 @@ const Game = {
   // ============================================================
 
   _bindUI() {
-    const pauseBtn = document.getElementById("pauseBtn");
-    const resumeBtn = document.getElementById("resumeBtn");
-    const saveBtn = document.getElementById("saveBtn");
-    const loadBtn = document.getElementById("loadBtn");
-    const restartBtn = document.getElementById("restartBtn");
+    const pauseBtn =
+      document.getElementById("pauseBtn");
+
+    const resumeBtn =
+      document.getElementById("resumeBtn");
+
+    const saveBtn =
+      document.getElementById("saveBtn");
+
+    const loadBtn =
+      document.getElementById("loadBtn");
+
+    const restartBtn =
+      document.getElementById("restartBtn");
 
     if (pauseBtn) {
-      pauseBtn.onclick = () => this.togglePause();
+      pauseBtn.onclick = () =>
+        this.togglePause();
     }
 
     if (resumeBtn) {
-      resumeBtn.onclick = () => this.togglePause();
+      resumeBtn.onclick = () =>
+        this.togglePause();
     }
 
     if (saveBtn) {
@@ -167,18 +237,22 @@ const Game = {
           typeof Storage === "undefined" ||
           !Storage.load
         ) {
-          this.showToast("Save system unavailable");
+          this.showToast(
+            "Save system unavailable"
+          );
           return;
         }
 
-        const save = await Storage.load("ww-save");
+        const save =
+          await Storage.load("ww-save");
 
         if (!save) {
           this.showToast("No save found");
           return;
         }
 
-        this.flags = save.flags || {};
+        this.flags =
+          save.flags || {};
 
         this.player.stage =
           save.stage || "child";
@@ -194,13 +268,29 @@ const Game = {
         this.loadScene(
           save.sceneId || "greenvale",
           {
-            x: save.playerX || 60,
-            y: save.playerY || 130,
-            dir: save.playerDir || "down",
+            x:
+              save.playerX != null
+                ? save.playerX
+                : 60,
+
+            y:
+              save.playerY != null
+                ? save.playerY
+                : 130,
+
+            dir:
+              save.playerDir || "down",
           }
         );
 
-        document.getElementById("pauseMenu").style.display = "none";
+        const menu =
+          document.getElementById(
+            "pauseMenu"
+          );
+
+        if (menu) {
+          menu.style.display = "none";
+        }
 
         this.paused = false;
 
@@ -212,9 +302,14 @@ const Game = {
       restartBtn.onclick = () => {
         this.flags = {};
 
-        this.player.stage = "child";
-        this.player.maxHp = STAGE_MAXHP.child;
-        this.player.hp = this.player.maxHp;
+        this.player.stage =
+          "child";
+
+        this.player.maxHp =
+          STAGE_MAXHP.child;
+
+        this.player.hp =
+          this.player.maxHp;
 
         this.loadScene(
           "greenvale",
@@ -225,14 +320,27 @@ const Game = {
           }
         );
 
-        document.getElementById("pauseMenu").style.display = "none";
+        const menu =
+          document.getElementById(
+            "pauseMenu"
+          );
+
+        if (menu) {
+          menu.style.display = "none";
+        }
 
         this.paused = false;
 
-        this.showToast("Slice restarted");
+        this.showToast(
+          "Slice restarted"
+        );
       };
     }
   },
+
+  // ============================================================
+  // PAUSE
+  // ============================================================
 
   togglePause() {
     if (
@@ -242,13 +350,19 @@ const Game = {
       return;
     }
 
-    this.paused = !this.paused;
+    this.paused =
+      !this.paused;
 
-    const menu = document.getElementById("pauseMenu");
+    const menu =
+      document.getElementById(
+        "pauseMenu"
+      );
 
     if (menu) {
       menu.style.display =
-        this.paused ? "flex" : "none";
+        this.paused
+          ? "flex"
+          : "none";
     }
   },
 
@@ -257,7 +371,7 @@ const Game = {
   },
 
   // ============================================================
-  // Story flags
+  // FLAGS
   // ============================================================
 
   setFlag(key, value) {
@@ -266,7 +380,7 @@ const Game = {
   },
 
   // ============================================================
-  // Save
+  // SAVE
   // ============================================================
 
   async persistState() {
@@ -279,46 +393,70 @@ const Game = {
       return;
     }
 
-    await Storage.save("ww-save", {
-      flags: this.flags,
+    await Storage.save(
+      "ww-save",
+      {
+        flags: this.flags,
 
-      sceneId: this.currentScene.id,
+        sceneId:
+          this.currentScene.id,
 
-      playerX: this.player.x,
-      playerY: this.player.y,
-      playerDir: this.player.dir,
+        playerX:
+          this.player.x,
 
-      hp: this.player.hp,
-      maxHp: this.player.maxHp,
+        playerY:
+          this.player.y,
 
-      stage: this.player.stage,
-    });
+        playerDir:
+          this.player.dir,
+
+        hp:
+          this.player.hp,
+
+        maxHp:
+          this.player.maxHp,
+
+        stage:
+          this.player.stage,
+      }
+    );
   },
 
   // ============================================================
-  // Toast
+  // TOAST
   // ============================================================
 
-  showToast(text, duration = 2.4) {
-    const el = document.getElementById("toast");
+  showToast(
+    text,
+    duration = 2.4
+  ) {
+    const el =
+      document.getElementById(
+        "toast"
+      );
 
     if (!el) return;
 
     el.textContent = text;
     el.style.opacity = "1";
 
-    this.toastTimer = duration;
+    this.toastTimer =
+      duration;
   },
 
   // ============================================================
-  // Scene loading
+  // SCENE LOADING
   // ============================================================
 
   loadScene(id, spawn) {
-    const def = SCENES[id];
+    const def =
+      SCENES[id];
 
     if (!def) {
-      console.error("Unknown scene:", id);
+      console.error(
+        "Unknown scene:",
+        id
+      );
       return;
     }
 
@@ -327,63 +465,105 @@ const Game = {
       def._pruned = true;
     }
 
-    this.currentScene = def;
+    this.currentScene =
+      def;
 
-    // Original gameplay ground grid
-    this.currentGroundGrid = def.build();
+    // Keep original gameplay grid.
+    this.currentGroundGrid =
+      def.build();
 
     // ----------------------------------------------------------
-    // IMPORTANT:
-    // Canvas remains based on the actual scene dimensions.
+    // Canvas dimensions
     // ----------------------------------------------------------
-    this.canvas.width = def.cols * TILE;
-    this.canvas.height = def.rows * TILE;
 
+    this.canvas.width =
+      def.cols * TILE;
+
+    this.canvas.height =
+      def.rows * TILE;
+
+    // ----------------------------------------------------------
     // Collision solids
-    this.solids = def.decorations
-      .filter((d) => d.solid)
-      .map(getDecorationSolidRect);
+    // ----------------------------------------------------------
 
-    // Interactive objects
-    const interactables = def.decorations
-      .filter((d) => d.interactKey)
-      .map((d) => {
-        if (d.type === "dummy") {
-          return new TrainingDummy(d);
-        }
+    this.solids =
+      def.decorations
+        .filter(
+          (d) => d.solid
+        )
+        .map(
+          getDecorationSolidRect
+        );
 
-        return new Interactable(d);
-      });
+    // ----------------------------------------------------------
+    // Interactables
+    // ----------------------------------------------------------
 
-    // NPCs / enemies
-    const npcEntities = def.npcs.map((n) =>
-      makeEntity(n)
-    );
+    const interactables =
+      def.decorations
+        .filter(
+          (d) => d.interactKey
+        )
+        .map((d) => {
+          if (
+            d.type === "dummy"
+          ) {
+            return new TrainingDummy(d);
+          }
+
+          return new Interactable(d);
+        });
+
+    // ----------------------------------------------------------
+    // NPCs / ENEMIES
+    // ----------------------------------------------------------
+
+    const npcEntities =
+      def.npcs.map(
+        (n) => makeEntity(n)
+      );
 
     this.entities = [
       ...interactables,
       ...npcEntities,
     ];
 
-    // Player spawn
-    this.player.x = spawn.x;
-    this.player.y = spawn.y;
+    // ----------------------------------------------------------
+    // PLAYER
+    // ----------------------------------------------------------
+
+    this.player.x =
+      spawn.x;
+
+    this.player.y =
+      spawn.y;
 
     if (spawn.dir) {
-      this.player.dir = spawn.dir;
+      this.player.dir =
+        spawn.dir;
     }
 
-    // Audio
+    // ----------------------------------------------------------
+    // AUDIO
+    // ----------------------------------------------------------
+
     if (
       typeof AudioSys !== "undefined" &&
       AudioSys.setAmbient
     ) {
-      AudioSys.setAmbient(def.ambient);
+      AudioSys.setAmbient(
+        def.ambient
+      );
     }
 
-    // Location label
+    // ----------------------------------------------------------
+    // LOCATION LABEL
+    // ----------------------------------------------------------
+
     const locationLabel =
-      document.getElementById("locationLabel");
+      document.getElementById(
+        "locationLabel"
+      );
 
     if (locationLabel) {
       locationLabel.textContent =
@@ -392,17 +572,20 @@ const Game = {
   },
 
   // ============================================================
-  // Interaction
+  // INTERACTION
   // ============================================================
 
   findInteractTarget() {
     const range = 24;
 
     let closest = null;
-    let closestDist = Infinity;
+    let closestDist =
+      Infinity;
 
     for (const e of this.entities) {
-      if (!e.interact) continue;
+      if (!e.interact) {
+        continue;
+      }
 
       const ex =
         e.x !== undefined
@@ -414,10 +597,11 @@ const Game = {
           ? e.y
           : e.spriteY;
 
-      const dist = Math.hypot(
-        ex - this.player.x,
-        ey - this.player.y
-      );
+      const dist =
+        Math.hypot(
+          ex - this.player.x,
+          ey - this.player.y
+        );
 
       if (
         dist < range &&
@@ -432,25 +616,44 @@ const Game = {
   },
 
   // ============================================================
-  // Scene exits
+  // SCENE EXITS
   // ============================================================
 
   checkExits() {
     const box = {
-      x: this.player.x - this.player.w / 2,
-      y: this.player.y - this.player.h / 2,
-      w: this.player.w,
-      h: this.player.h,
+      x:
+        this.player.x -
+        this.player.w / 2,
+
+      y:
+        this.player.y -
+        this.player.h / 2,
+
+      w:
+        this.player.w,
+
+      h:
+        this.player.h,
     };
 
-    for (const exit of this.currentScene.exits) {
-      if (!rectsOverlap(box, exit.rect)) {
+    for (
+      const exit
+      of this.currentScene.exits
+    ) {
+      if (
+        !rectsOverlap(
+          box,
+          exit.rect
+        )
+      ) {
         continue;
       }
 
       if (
         exit.requiresFlag &&
-        !this.flags[exit.requiresFlag]
+        !this.flags[
+          exit.requiresFlag
+        ]
       ) {
         if (
           performance.now() -
@@ -480,59 +683,84 @@ const Game = {
   },
 
   // ============================================================
-  // Vision cutscene
+  // VISION CUTSCENE
   // ============================================================
 
   async playVision() {
     this.setPaused(true);
 
     const overlay =
-      document.getElementById("visionOverlay");
+      document.getElementById(
+        "visionOverlay"
+      );
 
     const textEl =
-      document.getElementById("visionText");
+      document.getElementById(
+        "visionText"
+      );
 
-    if (!overlay || !textEl) {
+    if (
+      !overlay ||
+      !textEl
+    ) {
       this.setPaused(false);
       return;
     }
 
-    overlay.style.display = "flex";
+    overlay.style.display =
+      "flex";
 
     await this._sleep(50);
 
     overlay.style.transition =
       "opacity 0.8s";
 
-    overlay.style.opacity = "0.95";
+    overlay.style.opacity =
+      "0.95";
 
     if (
       typeof AudioSys !== "undefined" &&
       AudioSys.setAmbient
     ) {
-      AudioSys.setAmbient("mystery");
+      AudioSys.setAmbient(
+        "mystery"
+      );
     }
 
-    for (const line of CRYSTAL_VISION_TEXT) {
-      textEl.textContent = line;
+    for (
+      const line
+      of CRYSTAL_VISION_TEXT
+    ) {
+      textEl.textContent =
+        line;
 
       textEl.style.transition =
         "opacity 0.6s";
 
-      textEl.style.opacity = "1";
+      textEl.style.opacity =
+        "1";
 
-      await this._sleep(2600);
+      await this._sleep(
+        2600
+      );
 
-      textEl.style.opacity = "0";
+      textEl.style.opacity =
+        "0";
 
-      await this._sleep(600);
+      await this._sleep(
+        600
+      );
     }
 
-    overlay.style.opacity = "0";
+    overlay.style.opacity =
+      "0";
 
-    await this._sleep(800);
+    await this._sleep(
+      800
+    );
 
-    overlay.style.display = "none";
+    overlay.style.display =
+      "none";
 
     this.setFlag(
       "visionSeen",
@@ -563,8 +791,9 @@ const Game = {
   },
 
   _sleep(ms) {
-    return new Promise((res) =>
-      setTimeout(res, ms)
+    return new Promise(
+      (res) =>
+        setTimeout(res, ms)
     );
   },
 
@@ -574,13 +803,19 @@ const Game = {
 
   updateHUD() {
     const heartsEl =
-      document.getElementById("hearts");
+      document.getElementById(
+        "hearts"
+      );
 
-    if (!heartsEl || !this.player) {
+    if (
+      !heartsEl ||
+      !this.player
+    ) {
       return;
     }
 
-    heartsEl.innerHTML = "";
+    heartsEl.innerHTML =
+      "";
 
     const totalHearts =
       this.player.maxHp / 2;
@@ -591,10 +826,13 @@ const Game = {
       i++
     ) {
       const heartHp =
-        this.player.hp - i * 2;
+        this.player.hp -
+        i * 2;
 
       const div =
-        document.createElement("div");
+        document.createElement(
+          "div"
+        );
 
       div.className =
         "heart" +
@@ -606,11 +844,15 @@ const Game = {
               : " empty"
         );
 
-      heartsEl.appendChild(div);
+      heartsEl.appendChild(
+        div
+      );
     }
 
     const stageLabel =
-      document.getElementById("stageLabel");
+      document.getElementById(
+        "stageLabel"
+      );
 
     if (stageLabel) {
       stageLabel.textContent =
@@ -621,16 +863,44 @@ const Game = {
   // ============================================================
   // TEXTURED GROUND
   // ============================================================
+  //
+  // IMPORTANT:
+  // World.js owns the textured ground.
+  //
+  // We DO NOT call both renderGround() and
+  // World.drawGround(), because that would draw the
+  // ground twice.
+  // ============================================================
 
   renderGround() {
-    const ctx = this.ctx;
+    if (
+      typeof World !== "undefined" &&
+      World.drawGround
+    ) {
+      World.drawGround(
+        this.ctx,
+        {
+          x: 0,
+          y: 0,
+          w: this.canvas.width,
+          h: this.canvas.height,
+        }
+      );
 
-    if (!this.currentGroundGrid) {
       return;
     }
 
+    // Fallback to the original ground renderer
+    // if World.js is unavailable.
+    const ctx =
+      this.ctx;
+
     const grid =
       this.currentGroundGrid;
+
+    if (!grid) {
+      return;
+    }
 
     for (
       let y = 0;
@@ -645,24 +915,15 @@ const Game = {
         const tile =
           grid[y][x];
 
-        const px = x * TILE;
-        const py = y * TILE;
+        const px =
+          x * TILE;
 
-        // ------------------------------------------------------
-        // Grass
-        // ------------------------------------------------------
+        const py =
+          y * TILE;
 
-        if (tile === GROUND.GRASS) {
-          const r =
-            Math.sin(
-              x * 12.9898 +
-              y * 78.233
-            ) *
-            43758.5453;
-
-          const rand =
-            r - Math.floor(r);
-
+        if (
+          tile === GROUND.GRASS
+        ) {
           ctx.fillStyle =
             "#2d542f";
 
@@ -672,69 +933,7 @@ const Game = {
             TILE,
             TILE
           );
-
-          ctx.fillStyle =
-            rand > 0.5
-              ? "#37663a"
-              : "#244526";
-
-          ctx.fillRect(
-            px + Math.floor(rand * 10),
-            py + Math.floor(rand * 8),
-            2,
-            4
-          );
-
-          if (rand > 0.7) {
-            ctx.fillStyle =
-              "#467d4a";
-
-            ctx.fillRect(
-              px + Math.floor(rand * 6) + 2,
-              py + Math.floor(rand * 6) + 2,
-              2,
-              2
-            );
-          }
-
-          // Small flowers
-          if (rand > 0.88) {
-            const flowerColors = [
-              "#e84a4a",
-              "#f5cb42",
-              "#ffffff",
-            ];
-
-            ctx.fillStyle =
-              flowerColors[
-                Math.floor(
-                  rand * 10
-                ) %
-                flowerColors.length
-              ];
-
-            ctx.fillRect(
-              px + 6,
-              py + 6,
-              3,
-              3
-            );
-
-            ctx.fillStyle =
-              "#223b23";
-
-            ctx.fillRect(
-              px + 7,
-              py + 9,
-              1,
-              3
-            );
-          }
         }
-
-        // ------------------------------------------------------
-        // Flower ground
-        // ------------------------------------------------------
 
         else if (
           tile === GROUND.FLOWER
@@ -758,21 +957,7 @@ const Game = {
             2,
             2
           );
-
-          ctx.fillStyle =
-            "#467d4a";
-
-          ctx.fillRect(
-            px + 2,
-            py + 4,
-            2,
-            4
-          );
         }
-
-        // ------------------------------------------------------
-        // Dirt path
-        // ------------------------------------------------------
 
         else if (
           tile === GROUND.PATH
@@ -786,63 +971,11 @@ const Game = {
             TILE,
             TILE
           );
-
-          const rand =
-            Math.abs(
-              Math.sin(
-                x * 12.9898 +
-                y * 78.233
-              )
-            ) % 1;
-
-          ctx.fillStyle =
-            "#8a6d40";
-
-          if (rand > 0.3) {
-            ctx.fillRect(
-              px + 2,
-              py + 3,
-              3,
-              2
-            );
-          }
-
-          if (rand > 0.6) {
-            ctx.fillRect(
-              px + 9,
-              py + 10,
-              4,
-              3
-            );
-          }
-
-          ctx.fillStyle =
-            "#c2a36e";
-
-          if (rand > 0.4) {
-            ctx.fillRect(
-              px + 6,
-              py + 5,
-              2,
-              2
-            );
-          }
         }
-
-        // ------------------------------------------------------
-        // Water
-        // ------------------------------------------------------
 
         else if (
           tile === GROUND.WATER
         ) {
-          const wave =
-            Math.sin(
-              performance.now() / 350 +
-              x +
-              y
-            ) * 2;
-
           ctx.fillStyle =
             "#2b5c8f";
 
@@ -851,23 +984,6 @@ const Game = {
             py,
             TILE,
             TILE
-          );
-
-          ctx.fillStyle =
-            "#437ebd";
-
-          ctx.fillRect(
-            px + wave,
-            py + 4,
-            8,
-            2
-          );
-
-          ctx.fillRect(
-            px + 4 - wave,
-            py + 11,
-            6,
-            2
           );
         }
       }
@@ -879,11 +995,18 @@ const Game = {
   // ============================================================
 
   _drawDecoration(d) {
-    const ctx = this.ctx;
+    if (
+      typeof Sprites === "undefined"
+    ) {
+      return;
+    }
+
+    const ctx =
+      this.ctx;
 
     if (
       d.type === "tree" &&
-      typeof Sprites !== "undefined"
+      Sprites.drawTree
     ) {
       Sprites.drawTree(
         ctx,
@@ -894,7 +1017,7 @@ const Game = {
 
     else if (
       d.type === "rock" &&
-      typeof Sprites !== "undefined"
+      Sprites.drawRock
     ) {
       Sprites.drawRock(
         ctx,
@@ -905,7 +1028,7 @@ const Game = {
 
     else if (
       d.type === "house" &&
-      typeof Sprites !== "undefined"
+      Sprites.drawHouse
     ) {
       Sprites.drawHouse(
         ctx,
@@ -918,7 +1041,6 @@ const Game = {
 
     else if (
       d.type === "fence" &&
-      typeof Sprites !== "undefined" &&
       Sprites.drawFence
     ) {
       Sprites.drawFence(
@@ -930,7 +1052,6 @@ const Game = {
 
     else if (
       d.type === "lantern" &&
-      typeof Sprites !== "undefined" &&
       Sprites.drawLantern
     ) {
       Sprites.drawLantern(
@@ -942,7 +1063,6 @@ const Game = {
 
     else if (
       d.type === "dummy" &&
-      typeof Sprites !== "undefined" &&
       Sprites.drawDummy
     ) {
       Sprites.drawDummy(
@@ -954,7 +1074,6 @@ const Game = {
 
     else if (
       d.type === "crystal" &&
-      typeof Sprites !== "undefined" &&
       Sprites.drawCrystal
     ) {
       Sprites.drawCrystal(
@@ -964,8 +1083,9 @@ const Game = {
         {
           glowPhase:
             performance.now() / 700,
+
           awakened:
-            this.flags.visionSeen
+            !!this.flags.visionSeen,
         }
       );
     }
@@ -976,7 +1096,8 @@ const Game = {
   // ============================================================
 
   renderLighting() {
-    const ctx = this.ctx;
+    const ctx =
+      this.ctx;
 
     ctx.save();
 
@@ -1018,7 +1139,8 @@ const Game = {
         "rgba(245,203,66,0)"
       );
 
-      ctx.fillStyle = g;
+      ctx.fillStyle =
+        g;
 
       ctx.beginPath();
 
@@ -1033,13 +1155,43 @@ const Game = {
       ctx.fill();
     };
 
-    glow(273, 183, 36);
-    glow(353, 273, 36);
+    // Lanterns
+    glow(
+      273,
+      183,
+      36
+    );
 
-    glow(90, 140, 20);
-    glow(130, 140, 20);
-    glow(170, 140, 20);
-    glow(210, 140, 20);
+    glow(
+      353,
+      273,
+      36
+    );
+
+    // Cottage windows
+    glow(
+      90,
+      140,
+      20
+    );
+
+    glow(
+      130,
+      140,
+      20
+    );
+
+    glow(
+      170,
+      140,
+      20
+    );
+
+    glow(
+      210,
+      140,
+      20
+    );
 
     ctx.restore();
   },
@@ -1049,7 +1201,8 @@ const Game = {
   // ============================================================
 
   renderAtmosphere() {
-    const ctx = this.ctx;
+    const ctx =
+      this.ctx;
 
     ctx.save();
 
@@ -1073,7 +1226,8 @@ const Game = {
       "rgba(10,18,12,0.38)"
     );
 
-    ctx.fillStyle = vignette;
+    ctx.fillStyle =
+      vignette;
 
     ctx.fillRect(
       0,
@@ -1086,14 +1240,18 @@ const Game = {
   },
 
   // ============================================================
-  // RENDER
+  // MAIN RENDER
   // ============================================================
 
   render() {
-    const ctx = this.ctx;
-    const scene = this.currentScene;
+    const ctx =
+      this.ctx;
 
-    if (!ctx || !scene || !this.player) {
+    if (
+      !ctx ||
+      !this.currentScene ||
+      !this.player
+    ) {
       return;
     }
 
@@ -1105,261 +1263,214 @@ const Game = {
     );
 
     // ----------------------------------------------------------
-    // 1. Textured ground
+    // 1. TEXTURED GROUND
     // ----------------------------------------------------------
 
     this.renderGround();
 
     // ----------------------------------------------------------
-    // 2. Depth-sorted decorations + entities + player
+    // 2. DEPTH-SORTED DECORATIONS
     // ----------------------------------------------------------
 
     const drawables = [];
 
-    for (const d of scene.decorations) {
-      if (d.interactKey) continue;
+    for (
+      const d
+      of this.currentScene.decorations
+    ) {
+      // Interactive objects are represented by their
+      // entity instead, so don't draw them twice.
+      if (d.interactKey) {
+        continue;
+      }
 
       drawables.push({
         sortY:
-          d.y + (d.h || 24),
+          d.y +
+          (d.h || 24),
 
         draw: () =>
           this._drawDecoration(d),
       });
     }
 
-    for (const e of this.entities) {
+    // ----------------------------------------------------------
+    // 3. ENTITIES
+    // ----------------------------------------------------------
+
+    for (
+      const e
+      of this.entities
+    ) {
       const ey =
         e.y !== undefined
           ? e.y
           : 0;
 
       drawables.push({
-        sortY: ey + 20,
+        sortY:
+          ey + 20,
 
-        draw: () =>
-          e.draw(ctx),
+        draw: () => {
+          if (e.draw) {
+            e.draw(ctx);
+          }
+        },
       });
     }
 
-    drawables.push({
-      sortY: this.player.y,
+    // ----------------------------------------------------------
+    // 4. PLAYER
+    // ----------------------------------------------------------
 
-      draw: () =>
-        this.player.draw(ctx),
+    drawables.push({
+      sortY:
+        this.player.y,
+
+      draw: () => {
+        if (
+          this.player.draw
+        ) {
+          this.player.draw(
+            ctx
+          );
+        }
+      },
     });
 
+    // Sort from back to front.
     drawables.sort(
       (a, b) =>
-        a.sortY - b.sortY
+        a.sortY -
+        b.sortY
     );
 
-    for (const d of drawables) {
+    for (
+      const d
+      of drawables
+    ) {
       d.draw();
     }
 
     // ----------------------------------------------------------
-    // 3. Lighting
+    // 5. LIGHTING
     // ----------------------------------------------------------
 
     this.renderLighting();
 
     // ----------------------------------------------------------
-    // 4. Atmospheric depth
+    // 6. ATMOSPHERE
     // ----------------------------------------------------------
 
     this.renderAtmosphere();
+
+    // ----------------------------------------------------------
+    // 7. HUD
+    // ----------------------------------------------------------
+
+    this.updateHUD();
+  },
+
+  // ============================================================
+  // UPDATE
+  // ============================================================
+
+  update(dt) {
+    if (this.paused) {
+      return;
+    }
+
+    // World animation
+    if (
+      typeof World !== "undefined" &&
+      World.update
+    ) {
+      World.update(dt);
+    }
+
+    // Player
+    if (
+      this.player &&
+      this.player.update
+    ) {
+      this.player.update(
+        dt,
+        this
+      );
+    }
+
+    // Entities
+    for (
+      const e
+      of this.entities
+    ) {
+      if (
+        e.update
+      ) {
+        e.update(
+          dt,
+          this
+        );
+      }
+    }
+
+    // Scene exits
+    if (
+      this.currentScene
+    ) {
+      this.checkExits();
+    }
+
+    // Toast timer
+    if (
+      this.toastTimer > 0
+    ) {
+      this.toastTimer -=
+        dt;
+
+      if (
+        this.toastTimer <= 0
+      ) {
+        const el =
+          document.getElementById(
+            "toast"
+          );
+
+        if (el) {
+          el.style.opacity =
+            "0";
+        }
+      }
+    }
   },
 
   // ============================================================
   // MAIN LOOP
   // ============================================================
 
-  loop(time) {
+  loop(timestamp) {
     const dt =
       Math.min(
-        0.05,
-        (time - this.lastTime) / 1000 || 0
+        (
+          timestamp -
+          (this.lastTime || timestamp)
+        ) / 1000,
+        0.1
       );
 
-    this.lastTime = time;
+    this.lastTime =
+      timestamp;
 
-    const input =
-      Input.poll();
+    this.update(dt);
 
-    if (!this.paused) {
-      const bounds = {
-        x: 0,
-        y: 0,
-        w:
-          this.currentScene.cols *
-          TILE,
-        h:
-          this.currentScene.rows *
-          TILE,
-      };
-
-      // Player
-      this.player.update(
-        dt,
-        input,
-        this.solids,
-        bounds
-      );
-
-      // Entities
-      for (const e of this.entities) {
-        if (
-          e instanceof Wolf
-        ) {
-          e.update(
-            dt,
-            this.player,
-            this.solids
-          );
-        }
-
-        else if (
-          e instanceof TrainingDummy
-        ) {
-          e.update(
-            dt,
-            this.player
-          );
-        }
-
-        else {
-          e.update(dt);
-        }
-      }
-
-      // Scene transitions
-      this.checkExits();
-
-      // Interaction
-      if (input.interactPressed) {
-        const target =
-          this.findInteractTarget();
-
-        if (target) {
-          target.interact(
-            this.flags,
-            (k, v) =>
-              this.setFlag(k, v)
-          );
-        }
-      }
-
-      // Death / recovery
-      if (this.player.hp <= 0) {
-        this.player.hp =
-          this.player.maxHp;
-
-        this.player.x = 60;
-        this.player.y = 130;
-
-        this.loadScene(
-          "greenvale",
-          {
-            x: 60,
-            y: 130,
-            dir: "down",
-          }
-        );
-
-        this.showToast(
-          "You stumble home to recover..."
-        );
-      }
-    }
-
-    // Toast timer
-    if (this.toastTimer > 0) {
-      this.toastTimer -= dt;
-
-      if (
-        this.toastTimer <= 0
-      ) {
-        const toast =
-          document.getElementById(
-            "toast"
-          );
-
-        if (toast) {
-          toast.style.opacity =
-            "0";
-        }
-      }
-    }
-
-    // HUD
-    this.updateHUD();
-
-    // Draw
     this.render();
 
-    // Continue loop
     requestAnimationFrame(
-      (t) => this.loop(t)
+      (t) =>
+        this.loop(t)
     );
   },
 };
-
-// ============================================================
-// COLLISION HELPERS
-// ============================================================
-
-function getDecorationSolidRect(d) {
-  switch (d.type) {
-    case "tree":
-      return {
-        x: d.x + 8,
-        y: d.y + 18,
-        w: 12,
-        h: 14,
-      };
-
-    case "rock":
-      return {
-        x: d.x + 2,
-        y: d.y + 4,
-        w: 12,
-        h: 10,
-      };
-
-    case "house":
-      return {
-        x: d.x,
-        y: d.y + d.h * 0.35,
-        w: d.w,
-        h: d.h * 0.65,
-      };
-
-    case "dummy":
-      return {
-        x: d.x,
-        y: d.y + 4,
-        w: 16,
-        h: 20,
-      };
-
-    case "sign":
-      return {
-        x: d.x - 6,
-        y: d.y,
-        w: 16,
-        h: 16,
-      };
-
-    default:
-      return {
-        x: d.x,
-        y: d.y,
-        w: 16,
-        h: 16,
-      };
-  }
-}
 
 // ============================================================
 // START GAME
@@ -1367,5 +1478,7 @@ function getDecorationSolidRect(d) {
 
 window.addEventListener(
   "load",
-  () => Game.init()
+  () => {
+    Game.init();
+  }
 );
