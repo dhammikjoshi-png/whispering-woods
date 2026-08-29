@@ -41,8 +41,8 @@ const Game = {
       Input.init();
     }
    
-    if (typeof Input !== "undefined" && Input.init) {
-      Input.init();
+    if (typeof Input !== "undefined" && World.init) {
+      World.init();
     }
     
     this.player = new Player(60, 130);
